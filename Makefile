@@ -1,8 +1,8 @@
 default : hamming.o
-	gcc -o hamming hamming.o
+	g++ -o hamming hamming.o
 
-hamming.o : hamming.c
-	gcc -c hamming.c
+hamming.o : hamming.cpp
+	g++ -c hamming.cpp
 
 clean :
 	rm hamming hamming.o
