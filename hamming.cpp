@@ -1,21 +1,20 @@
-/* hamming by Adam Mullins <adam.l.m@gmail.com> */
-
-/*
- * Assignment:
- *     Write a procedure (in C or C++) hamming(ascii, code) that will
- *     convert the low-order 7 bits of ascii into an 11-bit integer
- *     codeword stored in code.
- */
+// hamming by Adam Mullins <adam.l.m@gmail.com>
+//
+// Assignment:
+//     Write a procedure (in C or C++) hamming(ascii, code) that will
+//     convert the low-order 7 bits of ascii into an 11-bit integer
+//     codeword stored in code.
+//
+#include <climits>
 #include <cstdint>
 using std::uint8_t;
 using std::uint16_t;
 
-#include <climits>
-
-// Because we call __builtin_parityl( long ) with a
-// uint16_t argument...
+// Later we call __builtin_parityl( long ) with a uint16_t
+// argument. If a uint16_t won't fit into a long, the program will
+// have errors.
 #if ULONG_MAX <= UINT16_MAX
-#error "Can't compile using implementation types."
+#error "Can't compile using implementation types: uint16_t won't fit in long."
 #endif
 
 #include <iostream>
@@ -25,38 +24,26 @@ using std::endl;
 #include <iomanip>
 using std::setw;
 
+const char ALPHAS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // for demo later.
 
 
-const char ALPHAS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+// (uint16_t *) code is an out-param.
 void hamming(uint8_t ascii, uint16_t *code) {
-  // Diagram for reference:
+  // Reference diagram.
   //
-  // ASCII: 12 345 678
-  //        -- --- ---
-  //         . ...  11   <- Which bit goes where.
-  //         3 567 901    ascii[8] goes in code[11] (counting from 1)
-
-  // Code : __  __  __  __  __  __  __  __  __  __  __
-  //         1   2   3   4   5   6   7   8   9  10  11
-  //         P   P   .   P   .   .   .   P   .   .   .
-  //         1   .   1   .   1   .   1   .   1   .   1
-  //             2   2   .   .   2   2   .   .   2   2
-  //                     4   4   4   4   .   .   .   .
-  //                                     8   8   8   8
-
-  // PSEUDO-CODE:
-  //   1. Set bits in `code` to coresponding bits in `ascii`.
-  //      a. copy `ascii` into temp, mask off all but ascii bit 2.
-  //      b. l-shift 2.
-  //      c. bitwise `temp` or onto `code`--if bit 7th is 1, set it.
-  //         else leave 0.
+  //       ASCII byte | __  __  __  __  __  __  __  __
+  //  index from left |	 1   2   3   4   5   6   7   8  
+  // index from right |	 8   7   6   5   4   3   2   1
   //
-  //      d. Again for 4th, 5th, 6th bits from left.
-  //
-  //   2. Calculate and set parity bits.
-  //   3. Return.
-
+  //        Codeword  | __  __  __  __  __  __  __  __  __  __  __
+  //  index from left |	 1   2   3   4   5   6   7   8   9  10  11
+  // index from right |	11  10   9   8   7   6   5   4   3   2   1
+  //      parity bit? |	 P   P   .   P   .   .   .   P   .   .   .
+  //                  |	 .   .   1   .   1   .   1   .   1   .   1
+  // parity bit 'i'   |	 .   .   2   .   .   2   2   .   .   2   2
+  //    checks this   |	 .   .   .   .   4   4   4   .   .   .   .
+  //      data bit?   |	 .   .   .   .   .   .   .   .   8   8   8
 
   // Ensure everything is zeros.
   uint16_t temp = 0;
@@ -64,17 +51,15 @@ void hamming(uint8_t ascii, uint16_t *code) {
 
   // Copy ascii into temp. It should fit since temp is 16 bit, ascii is 8.
   temp = ascii;
-  // Mask off everything but the 7th bit from the right, then lshift 2,
+  // Mask off everything but the 7th bit FROM THE RIGHT, then lshift 2,
   // so that it becomes the 9th bit from the right.
   temp &= 0b0000000001000000;
   temp <<= 2;
-  // Copy onto code using bitwise OR.
-  *code |= temp;
-  // Clear temp.
-  temp = 0;
+  *code |= temp;  // Now blit onto code using bitwise OR.
+  temp = 0;       // Clear temp.
 
-  // Again for the 6th, 5th, 4th bits from left, but shifting by 1 so that
-  // they become the 7th, 6th, 5th bits from left.
+  // Again for the 6th, 5th, 4th bits from the right,
+  // but shifting by so that they become the 7th, 6th, 5th.
   temp = ascii;
   temp &= 0b0000000000111000;
   temp <<= 1;
@@ -87,15 +72,19 @@ void hamming(uint8_t ascii, uint16_t *code) {
   *code |= temp;
   temp = 0;
 
-  // Now, parity bits.
-  // Counting FROM THE RIGHT, bit 1 checks bits 3, 5, 7, 9, and 11.
-  // So, copy our code into temp, then mask off everything but bits 3,5..11
-  // and calculate the parity.
+  // Now we set the parity bits.
   //
-  // If the parity is already even, leave 1 as 0. Otherwise set it to 1.
+  // Ignore the five left-most bits of the sixteen bit word, so that the
+  // sixth becomes index 1.
+  //
+  // Counting FROM THE LEFT bit 1 is a parity bit, and checks bits 3, 5, 7, 
+  // 9, and 11. So, copy our code into temp, then mask off everything but
+  // bits 3,5..11 and calculate the parity.
+  //
+  // If the parity is already even, leave bit 1 as a 0.
+  // Otherwise set it to 1.
   temp = *code;
   temp &= 0b0000000101010101;
-  // FIXME: Ensure long and uint16_t have the same bit-width.
   if( __builtin_parityl(temp) ) { // 0 if even, 1 if odd.
     // Set the 10th bit from the right, COUNTING FROM 0.
     // So, the 11th for our usual numbering.
