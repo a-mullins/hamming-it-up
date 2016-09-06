@@ -70,7 +70,44 @@ void hamming(uint8_t ascii, uint16_t *code) {
   temp = 0;
 
   // Now, parity bits.
-  
+  // Counting FROM THE RIGHT, bit 1 checks bits 3, 5, 7, 9, and 11.
+  // So, copy our code into temp, then mask off everything but bits 3,5..11
+  // and calculate the parity.
+  //
+  // If the parity is already even, leave 1 as 0. Otherwise set it to 1.
+  temp = *code;
+  temp &= 0b0000000101010101;
+  // FIXME: Ensure long and uint16_t have the same bit-width.
+  if( !__builtin_parityl(temp) ) { // 0 if even, 1 if odd.
+    // Set the 10th bit from the right, COUNTING FROM 0.
+    // So, the 11th for our usual numbering.
+    *code |= (1 << 10);
+  }
+  temp = 0;
+
+  // Again for bit 2. It checks bits 3, 6, 7, 10, and 11.
+  temp = *code;
+  temp &= 0b0000000100110011;
+  if( !__builtin_parityl(temp) ) {
+    *code |= (1 << 9); // Set 10th from right.
+  }
+  temp = 0;
+
+  // Again for bit 4. It checks bits 5, 6, and 7.
+  temp = *code;
+  temp &= 0b0000000001110000;
+  if( !__builtin_parityl(temp) ) {
+    *code |= (1 << 7); // Set 8th from right.
+  }
+  temp = 0;
+
+  // Again for bit 8. It checks bits 9, 10, and 11.
+  temp = *code;
+  temp &= 0b0000000000000111;
+  if( !__builtin_parityl(temp) ) {
+    *code |= (1 << 3); // Set 4th from right.
+  }
+  temp = 0;
 }
 
 int main(int argc, char **argv) {
