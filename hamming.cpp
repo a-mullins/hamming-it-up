@@ -10,6 +10,24 @@
 using std::uint8_t;
 using std::uint16_t;
 
+#include <climits>
+
+// Because we call __builtin_parityl( long ) with a
+// uint16_t argument...
+#if ULONG_MAX <= UINT16_MAX
+#error "Can't compile using implementation types."
+#endif
+
+#include <iostream>
+using std::cout;
+using std::endl;
+
+#include <iomanip>
+using std::setw;
+
+
+
+const char ALPHAS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 void hamming(uint8_t ascii, uint16_t *code) {
   // Diagram for reference:
@@ -78,7 +96,7 @@ void hamming(uint8_t ascii, uint16_t *code) {
   temp = *code;
   temp &= 0b0000000101010101;
   // FIXME: Ensure long and uint16_t have the same bit-width.
-  if( !__builtin_parityl(temp) ) { // 0 if even, 1 if odd.
+  if( __builtin_parityl(temp) ) { // 0 if even, 1 if odd.
     // Set the 10th bit from the right, COUNTING FROM 0.
     // So, the 11th for our usual numbering.
     *code |= (1 << 10);
@@ -88,7 +106,7 @@ void hamming(uint8_t ascii, uint16_t *code) {
   // Again for bit 2. It checks bits 3, 6, 7, 10, and 11.
   temp = *code;
   temp &= 0b0000000100110011;
-  if( !__builtin_parityl(temp) ) {
+  if( __builtin_parityl(temp) ) {
     *code |= (1 << 9); // Set 10th from right.
   }
   temp = 0;
@@ -96,7 +114,7 @@ void hamming(uint8_t ascii, uint16_t *code) {
   // Again for bit 4. It checks bits 5, 6, and 7.
   temp = *code;
   temp &= 0b0000000001110000;
-  if( !__builtin_parityl(temp) ) {
+  if( __builtin_parityl(temp) ) {
     *code |= (1 << 7); // Set 8th from right.
   }
   temp = 0;
@@ -104,15 +122,39 @@ void hamming(uint8_t ascii, uint16_t *code) {
   // Again for bit 8. It checks bits 9, 10, and 11.
   temp = *code;
   temp &= 0b0000000000000111;
-  if( !__builtin_parityl(temp) ) {
+  if( __builtin_parityl(temp) ) {
     *code |= (1 << 3); // Set 4th from right.
   }
   temp = 0;
 }
 
-int main(int argc, char **argv) {
- /* FIXME: Stub. */
-  return 0;
+// adapted from C++ How To Program 6th ed. by Deitel & Deitel.
+// pg 1013, fig 21.6
+void display_bits(char alpha, uint16_t bits) {
+  const int SHIFT = 10;
+  const uint16_t MASK = 1 << SHIFT;
+
+  cout << setw(4) << alpha << " | ";
+
+  for(uint16_t i = 1; i <= SHIFT + 1; i++) {
+    cout << (bits & MASK ? '1' : '0');
+    bits <<= 1;
+
+    if( i == 3 || i == 7 ) {
+      cout << ' ';
+    }
+  }
+
+  cout << endl;
 }
 
+int main(int argc, char **argv) {
+  uint16_t code = 0;
 
+  for(short i = 0; i < 26; i++) {
+    hamming((uint8_t)ALPHAS[i], &code);
+    display_bits(ALPHAS[i], code);
+  }
+
+  return 0;
+}
